@@ -79,7 +79,8 @@ void print_usage(char *prg)
 	fprintf(stderr, "         -c          (send close command 'C\\r')\n");
 	fprintf(stderr, "         -f          (read status flags with 'F\\r' to reset error states)\n");
 	fprintf(stderr, "         -l          (send listen only command 'L\\r', overrides -o)\n");
-	fprintf(stderr, "         -s <speed>  (set CAN speed 0..8)\n");
+	fprintf(stderr, "         -s <speed>  (set CAN speed 0..9)\n");
+	fprintf(stderr, "         -y <speed>  (set CAN-FD speed 1.2.4.5)\n");
 	fprintf(stderr, "         -S <speed>  (set UART speed in baud)\n");
 	fprintf(stderr, "         -t <type>   (set UART flow control type 'hw' or 'sw')\n");
 	fprintf(stderr, "         -b <btr>    (set bit time register value)\n");
@@ -89,6 +90,7 @@ void print_usage(char *prg)
 	fprintf(stderr, "slcand -o -c -f -s6 ttyUSB0\n\n");
 	fprintf(stderr, "slcand -o -c -f -s6 ttyUSB0 can0\n\n");
 	fprintf(stderr, "slcand -o -c -f -s6 /dev/ttyUSB0\n\n");
+	fprintf(stderr, "slcand -o -c -f -y5 /dev/ttyACM0\n\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -189,6 +191,7 @@ int main(int argc, char *argv[])
 	int send_listen = 0;
 	int send_read_status_flags = 0;
 	char *speed = NULL;
+	char *speed_fd = NULL;
 	char *uart_speed_str = NULL;
 	long int uart_speed = 0;
 	int flow_type = FLOW_NONE;
@@ -200,7 +203,7 @@ int main(int argc, char *argv[])
 
 	ttypath[0] = '\0';
 
-	while ((opt = getopt(argc, argv, "ocfls:S:t:b:?hF")) != -1) {
+	while ((opt = getopt(argc, argv, "ocfls:y:S:t:b:?hF")) != -1) {
 		switch (opt) {
 		case 'o':
 			send_open = 1;
@@ -217,6 +220,11 @@ int main(int argc, char *argv[])
 		case 's':
 			speed = optarg;
 			if (strlen(speed) > 1)
+				print_usage(argv[0]);
+			break;
+		case 'y':
+			speed_fd = optarg;
+			if (strlen(speed_fd) > 1)
 				print_usage(argv[0]);
 			break;
 		case 'S':
@@ -326,6 +334,13 @@ int main(int argc, char *argv[])
 
 	if (speed) {
 		sprintf(buf, "C\rS%s\r", speed);
+		if (write(fd, buf, strlen(buf)) <= 0) {
+			perror("write");
+			exit(EXIT_FAILURE);
+		}
+	}
+	if (speed_fd) {
+		sprintf(buf, "C\rY%s\r", speed_fd);
 		if (write(fd, buf, strlen(buf)) <= 0) {
 			perror("write");
 			exit(EXIT_FAILURE);
